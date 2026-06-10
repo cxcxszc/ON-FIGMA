@@ -1,6 +1,4 @@
-'use client';
-import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Copy, Bell, BellOff, LogOut, Trash2, ChevronRight, Heart, Sun, Moon, Smartphone, Check } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -18,7 +16,7 @@ function SettingRow({
   subtitle,
   right,
 }: {
-  icon: ReactNode;
+  icon: React.ReactNode;
   title: string;
   subtitle?: string;
   right?: ReactNode;
@@ -75,15 +73,12 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 
 export function Profile() {
   const { theme, setTheme } = useTheme();
-  // Notification settings — single source of truth (moved from dashboard)
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [notifNewNotes, setNotifNewNotes] = useState(true);
   const [notifQuickSend, setNotifQuickSend] = useState(true);
   const [notifVoiceNotes, setNotifVoiceNotes] = useState(false);
-
   const [voiceStorage, setVoiceStorage] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [showNotifSection, setShowNotifSection] = useState(false);
 
   const pairCode = 'LOVE-2024';
 
@@ -136,7 +131,6 @@ export function Profile() {
           <p className="text-sm mb-4" style={{ color: 'var(--app-muted)', fontFamily: 'var(--font-body)' }}>
             Connected with Cx ❤️
           </p>
-
           <div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
             style={{
@@ -231,7 +225,7 @@ export function Profile() {
         </div>
       </div>
 
-      {/* Notifications Section — sole location for notification settings */}
+      {/* Notifications */}
       <div className="px-5 mb-5">
         <h3 className="text-xs font-semibold mb-3 px-1 tracking-wider" style={{ color: 'var(--app-muted)', fontFamily: 'var(--font-body)' }}>
           NOTIFICATIONS
@@ -268,7 +262,7 @@ export function Profile() {
         </div>
       </div>
 
-      {/* General Settings */}
+      {/* Settings */}
       <div className="px-5 mb-5">
         <h3 className="text-xs font-semibold mb-3 px-1 tracking-wider" style={{ color: 'var(--app-muted)', fontFamily: 'var(--font-body)' }}>
           SETTINGS

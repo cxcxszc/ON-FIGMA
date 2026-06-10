@@ -1,10 +1,8 @@
-'use client';
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Trash2, Heart, Mic, Square, Loader2, AlertCircle } from 'lucide-react';
 
-// ─── Cloudinary config (replace with your own) ───────────────────────
-const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME ?? 'demo';
-const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET ?? 'ml_default';
+const CLOUDINARY_CLOUD_NAME = 'dhfpxpusj';
+const CLOUDINARY_UPLOAD_PRESET = 'voice-notes';
 
 interface VoiceNote {
   id: string;
@@ -53,16 +51,17 @@ async function uploadToCloudinary(blob: Blob): Promise<string> {
   const formData = new FormData();
   formData.append('file', blob, `voice_${Date.now()}.webm`);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  formData.append('resource_type', 'video'); // audio is under 'video' in Cloudinary
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
     { method: 'POST', body: formData }
   );
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { error?: { message?: string } }).error?.message ?? 'Upload failed');
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? 'Upload failed');
   }
+
   const data = await res.json() as { secure_url: string };
   return data.secure_url;
 }
@@ -147,7 +146,14 @@ export function VoiceNotes() {
   const recordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ─── Playback (real audio if URL exists, simulated otherwise) ────────
+  const stopPlay = (id?: string) => {
+    if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+    if (id && audioRefs.current[id]) {
+      audioRefs.current[id].pause();
+    }
+    setPlayingId(null);
+  };
+
   const startPlay = (note: VoiceNote) => {
     if (playingId === note.id) {
       stopPlay(note.id);
@@ -156,7 +162,6 @@ export function VoiceNotes() {
     stopPlay(playingId ?? undefined);
 
     if (note.audioUrl) {
-      // Real audio playback
       let audio = audioRefs.current[note.id];
       if (!audio) {
         audio = new Audio(note.audioUrl);
@@ -175,7 +180,6 @@ export function VoiceNotes() {
         setPlayingId(null);
       };
     } else {
-      // Simulated playback for demo notes without audio
       setPlayingId(note.id);
       const start = (progresses[note.id] ?? 0) * note.durationSecs;
       let elapsed = start;
@@ -193,20 +197,10 @@ export function VoiceNotes() {
     }
   };
 
-  const stopPlay = (id?: string) => {
-    if (playIntervalRef.current) clearInterval(playIntervalRef.current);
-    if (id && audioRefs.current[id]) {
-      audioRefs.current[id].pause();
-    }
-    setPlayingId(null);
-  };
-
-  // ─── Recording ───────────────────────────────────────────────────────
   const startRecording = async () => {
     setMicError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Pick best supported MIME type (iOS Safari prefers mp4)
       const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']
         .find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
 
@@ -218,7 +212,7 @@ export function VoiceNotes() {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.start(250); // collect data every 250ms for real-time waveform
+      recorder.start(250);
       setIsRecording(true);
       setRecordSecs(0);
       recordIntervalRef.current = setInterval(() => setRecordSecs((s) => s + 1), 1000);
@@ -259,7 +253,6 @@ export function VoiceNotes() {
 
     recorder.onstop = async () => {
       const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-      // Stop all tracks
       recorder.stream.getTracks().forEach((t) => t.stop());
 
       try {
@@ -273,9 +266,7 @@ export function VoiceNotes() {
         const msg = err instanceof Error ? err.message : 'Upload failed';
         setNotes((prev) =>
           prev.map((n) =>
-            n.id === tempId
-              ? { ...n, isUploading: false, uploadError: msg }
-              : n
+            n.id === tempId ? { ...n, isUploading: false, uploadError: msg } : n
           )
         );
       }
@@ -393,7 +384,7 @@ export function VoiceNotes() {
               {note.uploadError && (
                 <div className="flex items-center gap-2 mb-3 text-red-400">
                   <AlertCircle className="w-4 h-4" />
-                  <span className="text-xs" style={{ fontFamily: 'var(--font-body)' }}>Upload failed — tap to retry</span>
+                  <span className="text-xs" style={{ fontFamily: 'var(--font-body)' }}>Upload failed — please try again</span>
                 </div>
               )}
 
@@ -401,7 +392,7 @@ export function VoiceNotes() {
               <div className="flex items-center gap-3 mb-4">
                 <button
                   onClick={() => !note.isUploading && startPlay(note)}
-                  disabled={note.isUploading}
+                  disabled={!!note.isUploading}
                   className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
                   style={{
                     background: note.isUploading
